@@ -45,7 +45,10 @@ export class AuditInterceptor implements NestInterceptor {
                   performedById: user.id,
                   entityType,
                   entityId: String(finalEntityId),
-                  newData: method !== 'DELETE' ? (response?.data || response || body) : null,
+                  newData:
+                    method !== 'DELETE'
+                      ? response?.data || response || body
+                      : null,
                   previousData: previousData,
                 });
               }
@@ -58,16 +61,22 @@ export class AuditInterceptor implements NestInterceptor {
       catchError((err) => {
         // If pre-fetching or the main handler fails, we still want to handle the error properly
         throw err;
-      })
+      }),
     );
   }
 
-  private async fetchPreviousData(entityType: string, id: string, method: string): Promise<any> {
+  private async fetchPreviousData(
+    entityType: string,
+    id: string,
+    method: string,
+  ): Promise<any> {
     if (['PATCH', 'PUT', 'DELETE'].includes(method) && id && id !== 'N/A') {
       try {
         // Try to fetch the current state of the entity before it's modified/deleted
         // entityType derived from URL (e.g., 'Member', 'MembershipPlan') should match entity class names
-        return await this.entityManager.findOne(entityType as any, { where: { id } });
+        return await this.entityManager.findOne(entityType, {
+          where: { id },
+        });
       } catch (e) {
         // If entityType doesn't match a TypeORM entity or ID is not found, return null
         return null;
@@ -92,14 +101,17 @@ export class AuditInterceptor implements NestInterceptor {
 
   private extractEntityType(url: string): string {
     const path = url.split('?')[0];
-    const parts = path.split('/').filter(p => p && !['api', 'v1', 'v2'].includes(p));
-    
+    const parts = path
+      .split('/')
+      .filter((p) => p && !['api', 'v1', 'v2'].includes(p));
+
     if (parts.length === 0) return 'Unknown';
-    
+
     // Find the last part that isn't a UUID or numeric ID
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let resource = '';
-    
+
     for (let i = parts.length - 1; i >= 0; i--) {
       const part = parts[i];
       if (!uuidPattern.test(part) && isNaN(Number(part))) {
@@ -107,30 +119,30 @@ export class AuditInterceptor implements NestInterceptor {
         break;
       }
     }
-    
+
     if (!resource) resource = parts[0];
 
     // Special case mappings if needed
     const mappings: Record<string, string> = {
-      'auth': 'User',
+      auth: 'User',
       'gym-cms': 'GymContent',
     };
 
     if (mappings[resource]) return mappings[resource];
-    
+
     // Capitalize and handle kebab-case
     let entity = resource
       .split('-')
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join('');
-      
+
     // Singularize
     if (entity.endsWith('ies')) {
       entity = entity.slice(0, -3) + 'y';
     } else if (entity.endsWith('s') && !entity.endsWith('ss')) {
       entity = entity.slice(0, -1);
     }
-    
+
     return entity;
   }
 }

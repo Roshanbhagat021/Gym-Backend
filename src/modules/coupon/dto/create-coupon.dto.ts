@@ -1,4 +1,13 @@
-import { IsBoolean, IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CouponType } from '../../../common/enums';
 
@@ -13,7 +22,7 @@ export class CreateCouponDto {
   @IsNotEmpty()
   type: CouponType;
 
-  @ApiProperty({ example: 50.00 })
+  @ApiProperty({ example: 50.0 })
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
@@ -36,7 +45,7 @@ export class CreateCouponDto {
   @IsOptional()
   usagePerUser?: number;
 
-  @ApiPropertyOptional({ example: 500.00 })
+  @ApiPropertyOptional({ example: 500.0 })
   @IsNumber()
   @Min(0)
   @IsOptional()

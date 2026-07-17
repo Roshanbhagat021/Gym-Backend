@@ -1,8 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { CouponService } from './coupon.service';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateCouponDto } from './dto/update-coupon.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -54,7 +69,10 @@ export class CouponController {
   @Get('validate/:code')
   @ApiOperation({ summary: 'Validate a coupon code' })
   @ApiQuery({ name: 'purchaseAmount', required: true, type: Number })
-  validateCoupon(@Param('code') code: string, @Query('purchaseAmount') purchaseAmount: number) {
+  validateCoupon(
+    @Param('code') code: string,
+    @Query('purchaseAmount') purchaseAmount: number,
+  ) {
     return this.couponService.validateCoupon(code, purchaseAmount);
   }
 }

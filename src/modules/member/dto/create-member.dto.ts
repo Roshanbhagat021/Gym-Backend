@@ -5,10 +5,11 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MembershipStatus } from '../../../common/enums';
+import { MemberGender } from '../../../common/enums';
 
 export class CreateMemberDto {
   @ApiProperty({ example: 'John Member' })
@@ -27,9 +28,10 @@ export class CreateMemberDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: '+1234567890' })
+  @ApiProperty({ example: '9876543210' })
   @IsString()
   @IsNotEmpty()
+  @Matches(/^\d{10}$/, { message: 'Mobile number must be exactly 10 digits' })
   mobile: string;
 
   @ApiPropertyOptional({ example: '+0987654321' })
@@ -47,16 +49,16 @@ export class CreateMemberDto {
   @IsOptional()
   dob?: string;
 
-  @ApiPropertyOptional({ example: 'Male' })
-  @IsString()
+  @ApiPropertyOptional({ enum: MemberGender, example: MemberGender.MALE })
+  @IsEnum(MemberGender)
   @IsOptional()
-  gender?: string;
+  gender?: MemberGender;
 
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
   activePlanId?: string;
-  
+
   @ApiPropertyOptional({ example: 'image-url' })
   @IsString()
   @IsOptional()

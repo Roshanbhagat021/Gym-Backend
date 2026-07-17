@@ -19,7 +19,7 @@ export class DashboardService {
     const activeMembers = await this.memberRepository.count({
       where: { membershipStatus: MembershipStatus.ACTIVE },
     });
-    
+
     // Revenue calculations
     const result = await this.paymentRepository
       .createQueryBuilder('payment')

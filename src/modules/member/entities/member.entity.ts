@@ -9,7 +9,7 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
-import { MembershipStatus } from '../../../common/enums';
+import { MemberGender, MembershipStatus } from '../../../common/enums';
 import { User } from '../../user/entities/user.entity';
 import { MemberMembership } from './member-membership.entity';
 
@@ -34,8 +34,12 @@ export class Member {
   @Column({ type: 'date', nullable: true })
   dob: Date;
 
-  @Column({ nullable: true })
-  gender: string;
+  @Column({
+    type: 'enum',
+    enum: MemberGender,
+    nullable: true,
+  })
+  gender: MemberGender;
 
   @Column({
     type: 'enum',

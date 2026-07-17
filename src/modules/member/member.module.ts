@@ -8,7 +8,9 @@ import { MemberController } from './member.controller';
 import { MemberService } from './member.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Member, MemberMembership, MembershipPlan])],
+  imports: [
+    TypeOrmModule.forFeature([Member, MemberMembership, MembershipPlan]),
+  ],
   controllers: [MemberController],
   providers: [MemberService],
   exports: [MemberService],

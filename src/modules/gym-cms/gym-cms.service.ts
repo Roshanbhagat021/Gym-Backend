@@ -21,7 +21,9 @@ export class GymCmsService {
     const content = await this.contentRepository.find();
     if (content.length === 0) {
       // Create default if none exists
-      return this.contentRepository.save(this.contentRepository.create({ gymName: 'My Gym' }));
+      return this.contentRepository.save(
+        this.contentRepository.create({ gymName: 'My Gym' }),
+      );
     }
     return content[0];
   }
@@ -49,7 +51,10 @@ export class GymCmsService {
     return trainer;
   }
 
-  async updateTrainer(id: string, updateDto: UpdateTrainerDto): Promise<Trainer> {
+  async updateTrainer(
+    id: string,
+    updateDto: UpdateTrainerDto,
+  ): Promise<Trainer> {
     const trainer = await this.findOneTrainer(id);
     Object.assign(trainer, updateDto);
     return this.trainerRepository.save(trainer);

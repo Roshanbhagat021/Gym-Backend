@@ -19,7 +19,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.password,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -47,24 +50,41 @@ export class AuthService {
     return { success: true, message: 'Logged out successfully' };
   }
 
-  async refreshTokens(userId: string, refreshToken: string) {
-    const user = await this.userService.findById(userId);
-    if (!user || !user.hashedRefreshToken) {
-      throw new UnauthorizedException('Access Denied');
+  async refreshTokens(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      });
+      const userId = payload.sub;
+
+      const user = await this.userService.findById(userId);
+      if (!user || !user.hashedRefreshToken) {
+        throw new UnauthorizedException('Access Denied');
+      }
+
+      const refreshTokenMatches = await bcrypt.compare(
+        refreshToken,
+        user.hashedRefreshToken,
+      );
+      if (!refreshTokenMatches) {
+        throw new UnauthorizedException('Access Denied');
+      }
+
+      const tokens = await this.getTokens(user.id, user.email, user.role);
+      await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+
+      return {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        ...tokens,
+      };
+    } catch (e) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
-
-    const refreshTokenMatches = await bcrypt.compare(
-      refreshToken,
-      user.hashedRefreshToken,
-    );
-    if (!refreshTokenMatches) {
-      throw new UnauthorizedException('Access Denied');
-    }
-
-    const tokens = await this.getTokens(user.id, user.email, user.role);
-    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
-
-    return tokens;
   }
 
   private async updateRefreshTokenHash(userId: string, refreshToken: string) {
@@ -78,11 +98,17 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(jwtPayload, {
         secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_EXPIRATION', '15m') as any,
+        expiresIn: this.configService.get<string>(
+          'JWT_EXPIRATION',
+          '1m',
+        ) as any,
       }),
       this.jwtService.signAsync(jwtPayload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d') as any,
+        expiresIn: this.configService.get<string>(
+          'JWT_REFRESH_EXPIRATION',
+          '7d',
+        ) as any,
       }),
     ]);
 

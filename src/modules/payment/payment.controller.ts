@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
@@ -34,9 +42,7 @@ export class PaymentController {
   @Get('my-history')
   @ApiOperation({ summary: 'Get payment history for the current member' })
   findMyHistory(@CurrentUser() user: any) {
-    // In a real implementation, you would need to map the user ID to the member ID
-    // For now, assuming user ID maps directly or we look up the member by user ID
-    return { message: 'This would return the specific member payments', userId: user.id };
+    return this.paymentService.findByUser(user.id);
   }
 
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)

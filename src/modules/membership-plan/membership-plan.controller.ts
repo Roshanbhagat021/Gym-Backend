@@ -1,8 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { MembershipPlanService } from './membership-plan.service';
 import { CreateMembershipPlanDto } from './dto/create-membership-plan.dto';
 import { UpdateMembershipPlanDto } from './dto/update-membership-plan.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -40,7 +55,10 @@ export class MembershipPlanController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a membership plan' })
-  update(@Param('id') id: string, @Body() updatePlanDto: UpdateMembershipPlanDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updatePlanDto: UpdateMembershipPlanDto,
+  ) {
     return this.planService.update(id, updatePlanDto);
   }
 

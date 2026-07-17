@@ -15,7 +15,7 @@ export class AuditLogService {
     const { performedById, ...logData } = createDto;
     const log = this.auditLogRepository.create({
       ...logData,
-      performedBy: { id: performedById } as any,
+      performedBy: { id: performedById },
     });
     return this.auditLogRepository.save(log);
   }

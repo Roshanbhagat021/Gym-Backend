@@ -17,16 +17,20 @@ export class PaymentService {
 
   async create(createPaymentDto: CreatePaymentDto): Promise<Payment> {
     const { memberId, planId, ...paymentData } = createPaymentDto;
-    
+
     let payment = this.paymentRepository.create({
       ...paymentData,
-      member: { id: memberId } as any,
+      member: { id: memberId },
     });
 
     payment = await this.paymentRepository.save(payment);
 
     if (planId && payment.status === PaymentStatus.COMPLETED) {
-      const membership = await this.memberService.purchaseMembership(memberId, planId, Number(payment.amount));
+      const membership = await this.memberService.purchaseMembership(
+        memberId,
+        planId,
+        Number(payment.amount),
+      );
       payment.membership = membership;
       payment = await this.paymentRepository.save(payment);
     }
@@ -49,17 +53,20 @@ export class PaymentService {
     return payment;
   }
 
-  async update(id: string, updatePaymentDto: UpdatePaymentDto): Promise<Payment> {
+  async update(
+    id: string,
+    updatePaymentDto: UpdatePaymentDto,
+  ): Promise<Payment> {
     const payment = await this.findOne(id);
     const { memberId, planId, ...paymentData } = updatePaymentDto;
-    
+
     if (memberId) {
       payment.member = { id: memberId } as any;
     }
-    
+
     const oldStatus = payment.status;
     Object.assign(payment, paymentData);
-    
+
     const savedPayment = await this.paymentRepository.save(payment);
 
     // If status changed to COMPLETED and we have a planId, trigger membership purchase
@@ -84,6 +91,16 @@ export class PaymentService {
   async findByMember(memberId: string): Promise<Payment[]> {
     return this.paymentRepository.find({
       where: { member: { id: memberId } },
+      relations: ['member', 'membership', 'membership.plan'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findByUser(userId: string): Promise<Payment[]> {
+    const member = await this.memberService.findByUserId(userId);
+    return this.paymentRepository.find({
+      where: { member: { id: member.id } },
+      relations: ['member', 'membership', 'membership.plan'],
       order: { createdAt: 'DESC' },
     });
   }

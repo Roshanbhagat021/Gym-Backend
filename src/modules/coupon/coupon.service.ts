@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Coupon } from './entities/coupon.entity';
@@ -48,11 +52,15 @@ export class CouponService {
 
   async validateCoupon(code: string, purchaseAmount: number): Promise<Coupon> {
     const coupon = await this.couponRepository.findOne({ where: { code } });
-    
+
     if (!coupon) throw new NotFoundException('Invalid coupon code');
     if (!coupon.isActive) throw new ConflictException('Coupon is inactive');
-    if (new Date() > new Date(coupon.expiryDate)) throw new ConflictException('Coupon has expired');
-    if (coupon.minPurchaseAmount > purchaseAmount) throw new ConflictException(`Minimum purchase amount of ${coupon.minPurchaseAmount} required`);
+    if (new Date() > new Date(coupon.expiryDate))
+      throw new ConflictException('Coupon has expired');
+    if (coupon.minPurchaseAmount > purchaseAmount)
+      throw new ConflictException(
+        `Minimum purchase amount of ${coupon.minPurchaseAmount} required`,
+      );
     // NOTE: Checking maxUsage and usagePerUser would require tracking coupon uses in a separate table, e.g., 'CouponUsage'.
 
     return coupon;

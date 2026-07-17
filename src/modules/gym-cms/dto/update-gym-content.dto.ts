@@ -22,7 +22,9 @@ export class UpdateGymContentDto {
   @IsOptional()
   heroBanners?: string[];
 
-  @ApiPropertyOptional({ example: { phone: '12345', email: 'contact@gym.com' } })
+  @ApiPropertyOptional({
+    example: { phone: '12345', email: 'contact@gym.com' },
+  })
   @IsOptional()
   contactInformation?: any;
 

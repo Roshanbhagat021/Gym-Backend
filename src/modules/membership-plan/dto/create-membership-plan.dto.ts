@@ -1,4 +1,11 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateMembershipPlanDto {
@@ -13,14 +20,15 @@ export class CreateMembershipPlanDto {
   @IsNotEmpty()
   duration: number;
 
-  @ApiProperty({ example: 1200.00 })
+  @ApiProperty({ example: 1200.0 })
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
   price: number;
 
-
-  @ApiPropertyOptional({ example: 'Best value plan for a full year of access.' })
+  @ApiPropertyOptional({
+    example: 'Best value plan for a full year of access.',
+  })
   @IsString()
   @IsOptional()
   description?: string;

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { MemberService } from './member.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
@@ -42,9 +52,7 @@ export class MemberController {
   @Roles(Role.MEMBER)
   @ApiOperation({ summary: 'Get current member profile' })
   findMyProfile(@CurrentUser() user: any) {
-    // Assuming Member table has a relation to user table via user.id
-    // This is a naive implementation, properly you would query memberRepository where user: { id: user.id }
-    return { message: 'In a full implementation, this will return the member profile linked to the current user.', userId: user.id };
+    return this.memberService.findByUserId(user.id);
   }
 
   @Get(':id')

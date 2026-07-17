@@ -1,4 +1,11 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaymentGateway, PaymentStatus } from '../../../common/enums';
 
@@ -8,7 +15,7 @@ export class CreatePaymentDto {
   @IsNotEmpty()
   memberId: string;
 
-  @ApiProperty({ example: 1200.00 })
+  @ApiProperty({ example: 1200.0 })
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
@@ -24,7 +31,10 @@ export class CreatePaymentDto {
   @IsOptional()
   transactionId?: string;
 
-  @ApiPropertyOptional({ enum: PaymentGateway, example: PaymentGateway.RAZORPAY })
+  @ApiPropertyOptional({
+    enum: PaymentGateway,
+    example: PaymentGateway.RAZORPAY,
+  })
   @IsEnum(PaymentGateway)
   @IsOptional()
   paymentGateway?: PaymentGateway;

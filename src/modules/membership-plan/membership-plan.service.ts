@@ -12,7 +12,9 @@ export class MembershipPlanService {
     private readonly planRepository: Repository<MembershipPlan>,
   ) {}
 
-  async create(createPlanDto: CreateMembershipPlanDto): Promise<MembershipPlan> {
+  async create(
+    createPlanDto: CreateMembershipPlanDto,
+  ): Promise<MembershipPlan> {
     const plan = this.planRepository.create(createPlanDto);
     return this.planRepository.save(plan);
   }
@@ -30,7 +32,10 @@ export class MembershipPlanService {
     return plan;
   }
 
-  async update(id: string, updatePlanDto: UpdateMembershipPlanDto): Promise<MembershipPlan> {
+  async update(
+    id: string,
+    updatePlanDto: UpdateMembershipPlanDto,
+  ): Promise<MembershipPlan> {
     const plan = await this.findOne(id);
     Object.assign(plan, updatePlanDto);
     return this.planRepository.save(plan);

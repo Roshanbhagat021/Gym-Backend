@@ -12,6 +12,12 @@ export enum MembershipStatus {
   UPCOMING = 'UPCOMING',
 }
 
+export enum MemberGender {
+  MALE = 'Male',
+  FEMALE = 'Female',
+  OTHER = 'Other',
+}
+
 export enum CouponType {
   PERCENTAGE = 'PERCENTAGE',
   FLAT = 'FLAT',

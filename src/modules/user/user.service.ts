@@ -1,7 +1,12 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from './entities/user.entity';
+import { Role } from '../../common/enums';
 
 @Injectable()
 export class UserService {
@@ -22,8 +27,13 @@ export class UserService {
     return user;
   }
 
-  async updateRefreshToken(userId: string, hashedRefreshToken: string | null): Promise<void> {
-    await this.userRepository.update(userId, { hashedRefreshToken: hashedRefreshToken as any });
+  async updateRefreshToken(
+    userId: string,
+    hashedRefreshToken: string | null,
+  ): Promise<void> {
+    await this.userRepository.update(userId, {
+      hashedRefreshToken: hashedRefreshToken as any,
+    });
   }
 
   async create(createUserDto: any): Promise<User> {
@@ -31,13 +41,24 @@ export class UserService {
     if (existingUser) {
       throw new ConflictException('Email already exists');
     }
-    const user = this.userRepository.create(createUserDto as any);
+    const user = this.userRepository.create(createUserDto);
     return this.userRepository.save(user as any);
   }
 
   async findAll(): Promise<User[]> {
     return this.userRepository.find({
-      select: ['id', 'name', 'email', 'role', 'isActive', 'profileImage', 'createdAt'],
+      select: [
+        'id',
+        'name',
+        'email',
+        'role',
+        'isActive',
+        'profileImage',
+        'createdAt',
+      ],
+      where: {
+        role: In([Role.ADMIN, Role.SUPER_ADMIN]),
+      },
     });
   }
 

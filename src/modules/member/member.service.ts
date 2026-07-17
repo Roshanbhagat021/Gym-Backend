@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Member } from './entities/member.entity';
@@ -24,7 +28,8 @@ export class MemberService {
 
   async create(createMemberDto: CreateMemberDto): Promise<Member> {
     try {
-      const { name, email, password, activePlanId, ...memberData } = createMemberDto;
+      const { name, email, password, activePlanId, ...memberData } =
+        createMemberDto;
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -33,8 +38,10 @@ export class MemberService {
       user.email = email;
       user.password = hashedPassword;
       user.role = Role.MEMBER;
-      
-      const existingMobile = await this.memberRepository.findOne({ where: { mobile: memberData.mobile } });
+
+      const existingMobile = await this.memberRepository.findOne({
+        where: { mobile: memberData.mobile },
+      });
       if (existingMobile) {
         throw new ConflictException('Mobile number already exists');
       }
@@ -76,9 +83,23 @@ export class MemberService {
     return member;
   }
 
+  async findByUserId(userId: string): Promise<Member> {
+    const member = await this.memberRepository.findOne({
+      where: { user: { id: userId } },
+      relations: ['user', 'memberships', 'memberships.plan'],
+    });
+    if (!member) {
+      throw new NotFoundException(
+        `Member profile for user ${userId} not found`,
+      );
+    }
+    return member;
+  }
+
   async update(id: string, updateMemberDto: UpdateMemberDto): Promise<Member> {
     const member = await this.findOne(id);
-    const { name, email, password, activePlanId, ...memberData } = updateMemberDto;
+    const { name, email, password, activePlanId, ...memberData } =
+      updateMemberDto;
 
     if (name) member.user.name = name;
     if (email) member.user.email = email;
@@ -100,7 +121,9 @@ export class MemberService {
     planId: string,
     pricePaid: number,
   ): Promise<MemberMembership> {
-    const member = await this.memberRepository.findOne({ where: { id: memberId } });
+    const member = await this.memberRepository.findOne({
+      where: { id: memberId },
+    });
     if (!member) throw new NotFoundException('Member not found');
 
     const plan = await this.planRepository.findOne({ where: { id: planId } });
@@ -115,7 +138,10 @@ export class MemberService {
     let startDate = new Date();
     let status = MembershipStatus.ACTIVE;
 
-    if (latestMembership && new Date(latestMembership.expiryDate) > new Date()) {
+    if (
+      latestMembership &&
+      new Date(latestMembership.expiryDate) > new Date()
+    ) {
       // If they have an active/future membership, start after it
       startDate = new Date(latestMembership.expiryDate);
       startDate.setDate(startDate.getDate() + 1);
@@ -139,7 +165,10 @@ export class MemberService {
     const savedMembership = await this.membershipRepository.save(membership);
 
     // Update member's general status if they were cancelled/expired
-    if (member.membershipStatus !== MembershipStatus.ACTIVE && status === MembershipStatus.ACTIVE) {
+    if (
+      member.membershipStatus !== MembershipStatus.ACTIVE &&
+      status === MembershipStatus.ACTIVE
+    ) {
       member.membershipStatus = MembershipStatus.ACTIVE;
       await this.memberRepository.save(member);
     }
@@ -148,16 +177,16 @@ export class MemberService {
   }
 
   async findAllDashboard(queryDto: MemberQueryDto) {
-    const { 
-      search, 
-      status, 
-      planId, 
-      sortBy = MemberSortBy.CREATED_AT, 
-      sortOrder = 'DESC', 
-      page = 1, 
-      limit = 10 
+    const {
+      search,
+      status,
+      planId,
+      sortBy = MemberSortBy.CREATED_AT,
+      sortOrder = 'DESC',
+      page = 1,
+      limit = 10,
     } = queryDto;
-    
+
     const numericPage = Number(page);
     const numericLimit = Number(limit);
     const skip = (numericPage - 1) * numericLimit;
@@ -185,12 +214,12 @@ export class MemberService {
       query.andWhere('plan.id = :planId', { planId });
     }
 
-    const sortColumn = sortBy && sortBy.includes('.') ? sortBy : `member.${sortBy || 'createdAt'}`;
+    const sortColumn =
+      sortBy && sortBy.includes('.')
+        ? sortBy
+        : `member.${sortBy || 'createdAt'}`;
 
-    query
-      .orderBy(sortColumn, sortOrder)
-      .skip(skip)
-      .take(numericLimit);
+    query.orderBy(sortColumn, sortOrder).skip(skip).take(numericLimit);
 
     const [items, total] = await query.getManyAndCount();
 
