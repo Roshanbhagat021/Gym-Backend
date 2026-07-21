@@ -34,9 +34,12 @@ export class CreateMemberDto {
   @Matches(/^\d{10}$/, { message: 'Mobile number must be exactly 10 digits' })
   mobile: string;
 
-  @ApiPropertyOptional({ example: '+0987654321' })
+  @ApiPropertyOptional({ example: '9876543210' })
   @IsString()
   @IsOptional()
+  @Matches(/^\d{10}$/, {
+    message: 'Emergency contact must be exactly 10 digits',
+  })
   emergencyContact?: string;
 
   @ApiPropertyOptional({ example: '123 Gym Street' })

@@ -1,12 +1,17 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MembershipStatus } from '../../../common/enums';
+import { MemberGender, MembershipStatus } from '../../../common/enums';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum MemberSortBy {
   CREATED_AT = 'createdAt',
   NAME = 'user.name',
   MOBILE = 'mobile',
+}
+
+export enum MembershipExpiryFilter {
+  THIS_WEEK = 'thisWeek',
+  THIS_MONTH = 'thisMonth',
 }
 
 export class MemberQueryDto {
@@ -19,6 +24,16 @@ export class MemberQueryDto {
   @IsOptional()
   @IsEnum(MembershipStatus)
   status?: MembershipStatus;
+
+  @ApiPropertyOptional({ enum: MemberGender })
+  @IsOptional()
+  @IsEnum(MemberGender)
+  gender?: MemberGender;
+
+  @ApiPropertyOptional({ enum: MembershipExpiryFilter })
+  @IsOptional()
+  @IsEnum(MembershipExpiryFilter)
+  expiry?: MembershipExpiryFilter;
 
   @ApiPropertyOptional()
   @IsOptional()

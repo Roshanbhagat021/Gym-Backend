@@ -10,7 +10,11 @@ import { MemberMembership } from './entities/member-membership.entity';
 import { MembershipPlan } from '../membership-plan/entities/membership-plan.entity';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
-import { MemberQueryDto, MemberSortBy } from './dto/member-query.dto';
+import {
+  MemberQueryDto,
+  MemberSortBy,
+  MembershipExpiryFilter,
+} from './dto/member-query.dto';
 import { User } from '../user/entities/user.entity';
 import { MembershipStatus, Role } from '../../common/enums';
 import * as bcrypt from 'bcrypt';
@@ -180,6 +184,8 @@ export class MemberService {
     const {
       search,
       status,
+      gender,
+      expiry,
       planId,
       sortBy = MemberSortBy.CREATED_AT,
       sortOrder = 'DESC',
@@ -207,6 +213,30 @@ export class MemberService {
 
     if (status) {
       query.andWhere('member.membershipStatus = :status', { status });
+    }
+
+    if (gender) {
+      query.andWhere('member.gender = :gender', { gender });
+    }
+
+    if (expiry) {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      if (expiry === MembershipExpiryFilter.THIS_WEEK) {
+        end.setDate(end.getDate() + (7 - ((end.getDay() + 6) % 7)));
+      } else {
+        end.setMonth(end.getMonth() + 1, 1);
+      }
+      query.andWhere(
+        `EXISTS (
+          SELECT 1 FROM member_memberships expiring_membership
+          WHERE expiring_membership.member_id = member.id
+            AND expiring_membership."expiryDate" >= :expiryStart
+            AND expiring_membership."expiryDate" < :expiryEnd
+        )`,
+        { expiryStart: start, expiryEnd: end },
+      );
     }
 
     if (planId) {

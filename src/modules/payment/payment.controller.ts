@@ -5,11 +5,13 @@ import {
   Body,
   Patch,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
+import { PaymentQueryDto } from './dto/payment-query.dto';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -34,8 +36,8 @@ export class PaymentController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Get()
   @ApiOperation({ summary: 'Get all payments' })
-  findAll() {
-    return this.paymentService.findAll();
+  findAll(@Query() query: PaymentQueryDto) {
+    return this.paymentService.findAll(query);
   }
 
   @Roles(Role.MEMBER)

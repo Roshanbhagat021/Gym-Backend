@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment } from './entities/payment.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
+import {
+  PaymentMethodFilter,
+  PaymentPeriodFilter,
+  PaymentQueryDto,
+} from './dto/payment-query.dto';
 import { MemberService } from '../member/member.service';
 import { PaymentStatus } from '../../common/enums';
 
@@ -38,8 +43,39 @@ export class PaymentService {
     return payment;
   }
 
-  async findAll(): Promise<Payment[]> {
-    return this.paymentRepository.find({ relations: ['member'] });
+  async findAll(filters: PaymentQueryDto = {}): Promise<Payment[]> {
+    const query = this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.member', 'member')
+      .leftJoinAndSelect('member.user', 'user');
+
+    if (filters.search?.trim()) {
+      query.andWhere(
+        '(user.name ILIKE :search OR user.email ILIKE :search OR member.mobile ILIKE :search OR payment.transactionId ILIKE :search)',
+        { search: `%${filters.search.trim()}%` },
+      );
+    }
+    if (filters.status) query.andWhere('payment.status = :status', { status: filters.status });
+    if (filters.method === PaymentMethodFilter.CASH) {
+      query.andWhere('payment.paymentGateway = :cash', { cash: 'CASH' });
+    } else if (filters.method === PaymentMethodFilter.ONLINE) {
+      query.andWhere('payment.paymentGateway != :cash', { cash: 'CASH' });
+    }
+    if (filters.period) {
+      const now = new Date();
+      let start: Date;
+      if (filters.period === PaymentPeriodFilter.THIS_WEEK) {
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      } else if (filters.period === PaymentPeriodFilter.THIS_MONTH) {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else {
+        start = new Date(now.getFullYear(), 0, 1);
+      }
+      query.andWhere('payment.createdAt >= :start', { start });
+    }
+
+    return query.orderBy('payment.createdAt', 'DESC').getMany();
   }
 
   async findOne(id: string): Promise<Payment> {
@@ -60,8 +96,10 @@ export class PaymentService {
     const payment = await this.findOne(id);
     const { memberId, planId, ...paymentData } = updatePaymentDto;
 
-    if (memberId) {
-      payment.member = { id: memberId } as any;
+    if (memberId && memberId !== payment.member.id) {
+      throw new BadRequestException(
+        'The member cannot be changed after a payment is recorded',
+      );
     }
 
     const oldStatus = payment.status;
