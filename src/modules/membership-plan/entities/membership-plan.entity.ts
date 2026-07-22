@@ -27,6 +27,9 @@ export class MembershipPlan {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ default: false })
+  isPopular: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -15,6 +15,9 @@ export class MembershipPlanService {
   async create(
     createPlanDto: CreateMembershipPlanDto,
   ): Promise<MembershipPlan> {
+    if (createPlanDto.isPopular) {
+      await this.planRepository.update({ isPopular: true }, { isPopular: false });
+    }
     const plan = this.planRepository.create(createPlanDto);
     return this.planRepository.save(plan);
   }
@@ -37,6 +40,9 @@ export class MembershipPlanService {
     updatePlanDto: UpdateMembershipPlanDto,
   ): Promise<MembershipPlan> {
     const plan = await this.findOne(id);
+    if (updatePlanDto.isPopular) {
+      await this.planRepository.update({ isPopular: true }, { isPopular: false });
+    }
     Object.assign(plan, updatePlanDto);
     return this.planRepository.save(plan);
   }

@@ -37,4 +37,12 @@ export class CreateMembershipPlanDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Highlights this plan as the single popular plan',
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPopular?: boolean;
 }

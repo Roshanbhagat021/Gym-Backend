@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   ConflictException,
   NotFoundException,
@@ -18,6 +19,7 @@ import {
 import { User } from '../user/entities/user.entity';
 import { MembershipStatus, Role } from '../../common/enums';
 import * as bcrypt from 'bcrypt';
+import { MembershipAccessAction } from './dto/change-membership-access.dto';
 
 @Injectable()
 export class MemberService {
@@ -29,6 +31,105 @@ export class MemberService {
     @InjectRepository(MembershipPlan)
     private readonly planRepository: Repository<MembershipPlan>,
   ) {}
+
+  /**
+   * Reconciles stored membership statuses with their date ranges. Running this
+   * before reads keeps dashboards accurate even when the server was offline at
+   * the moment a membership expired or an upcoming membership became active.
+   */
+  async syncMembershipStatuses(memberId?: string): Promise<void> {
+    const today = this.getGymLocalDate();
+    const protectedStatuses = [MembershipStatus.CANCELLED];
+
+    await this.memberRepository.manager.transaction(async (manager) => {
+      const memberships = manager.getRepository(MemberMembership);
+      const members = manager.getRepository(Member);
+      const memberScope = memberId ? ' AND "member_id" = :memberId' : '';
+      const parameters = { today, protectedStatuses, memberId };
+
+      await memberships
+        .createQueryBuilder()
+        .update(MemberMembership)
+        .set({ status: MembershipStatus.EXPIRED })
+        .where('"expiryDate" < :today')
+        .andWhere('status NOT IN (:...protectedStatuses)')
+        .andWhere(`1 = 1${memberScope}`)
+        .setParameters(parameters)
+        .execute();
+
+      await memberships
+        .createQueryBuilder()
+        .update(MemberMembership)
+        .set({ status: MembershipStatus.UPCOMING })
+        .where('"startDate" > :today')
+        .andWhere('status NOT IN (:...protectedStatuses)')
+        .andWhere(`1 = 1${memberScope}`)
+        .setParameters(parameters)
+        .execute();
+
+      await memberships
+        .createQueryBuilder()
+        .update(MemberMembership)
+        .set({ status: MembershipStatus.ACTIVE })
+        .where('"startDate" <= :today')
+        .andWhere('"expiryDate" >= :today')
+        .andWhere('status NOT IN (:...protectedStatuses)')
+        .andWhere(`1 = 1${memberScope}`)
+        .setParameters(parameters)
+        .execute();
+
+      const membersToReconcile = await members.find({
+        ...(memberId ? { where: { id: memberId } } : {}),
+        relations: ['memberships'],
+      });
+
+      for (const member of membersToReconcile) {
+        const nextStatus = this.resolveMemberStatus(member.memberships || []);
+        if (member.membershipStatus !== nextStatus) {
+          await members.update(member.id, { membershipStatus: nextStatus });
+        }
+      }
+    });
+  }
+
+  private resolveMemberStatus(
+    memberships: MemberMembership[],
+  ): MembershipStatus {
+    const statuses = new Set(memberships.map((membership) => membership.status));
+
+    if (statuses.has(MembershipStatus.ACTIVE))
+      return MembershipStatus.ACTIVE;
+    if (statuses.has(MembershipStatus.UPCOMING)) return MembershipStatus.UPCOMING;
+
+    const latestMembership = [...memberships].sort(
+      (a, b) =>
+        new Date(b.expiryDate).getTime() - new Date(a.expiryDate).getTime(),
+    )[0];
+
+    if (latestMembership?.status === MembershipStatus.CANCELLED)
+      return MembershipStatus.CANCELLED;
+    if (latestMembership) return MembershipStatus.EXPIRED;
+    return MembershipStatus.CANCELLED;
+  }
+
+  private getGymLocalDate(date = new Date()): string {
+    const timeZone = process.env.GYM_TIMEZONE || 'Asia/Kolkata';
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const part = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((item) => item.type === type)?.value;
+
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  }
+
+  private dateStringToUtcDate(value: string): Date {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  }
 
   async create(createMemberDto: CreateMemberDto): Promise<Member> {
     try {
@@ -71,12 +172,14 @@ export class MemberService {
   }
 
   async findAll(): Promise<Member[]> {
+    await this.syncMembershipStatuses();
     return this.memberRepository.find({
       relations: ['user', 'memberships', 'memberships.plan'],
     });
   }
 
   async findOne(id: string): Promise<Member> {
+    await this.syncMembershipStatuses(id);
     const member = await this.memberRepository.findOne({
       where: { id },
       relations: ['user', 'memberships', 'memberships.plan'],
@@ -88,6 +191,12 @@ export class MemberService {
   }
 
   async findByUserId(userId: string): Promise<Member> {
+    const memberRecord = await this.memberRepository.findOne({
+      where: { user: { id: userId } },
+      select: { id: true },
+    });
+    if (memberRecord) await this.syncMembershipStatuses(memberRecord.id);
+
     const member = await this.memberRepository.findOne({
       where: { user: { id: userId } },
       relations: ['user', 'memberships', 'memberships.plan'],
@@ -111,13 +220,14 @@ export class MemberService {
       member.user.password = await bcrypt.hash(password, 10);
     }
 
+    Object.assign(member, memberData);
+    await this.memberRepository.save(member);
+
     if (activePlanId) {
       await this.purchaseMembership(member.id, activePlanId, 0);
     }
 
-    Object.assign(member, memberData);
-
-    return this.memberRepository.save(member);
+    return this.findOne(id);
   }
 
   async purchaseMembership(
@@ -139,21 +249,25 @@ export class MemberService {
       order: { expiryDate: 'DESC' },
     });
 
-    let startDate = new Date();
+    const today = this.getGymLocalDate();
+    let startDate = this.dateStringToUtcDate(today);
     let status = MembershipStatus.ACTIVE;
 
-    if (
-      latestMembership &&
-      new Date(latestMembership.expiryDate) > new Date()
-    ) {
-      // If they have an active/future membership, start after it
-      startDate = new Date(latestMembership.expiryDate);
-      startDate.setDate(startDate.getDate() + 1);
-      status = MembershipStatus.UPCOMING;
+    if (latestMembership) {
+      const latestExpiry = this.getGymLocalDate(
+        new Date(latestMembership.expiryDate),
+      );
+
+      if (latestExpiry >= today) {
+        // If they have an active/future membership, start after it
+        startDate = this.dateStringToUtcDate(latestExpiry);
+        startDate.setUTCDate(startDate.getUTCDate() + 1);
+        status = MembershipStatus.UPCOMING;
+      }
     }
 
     const expiryDate = new Date(startDate);
-    expiryDate.setDate(expiryDate.getDate() + plan.duration);
+    expiryDate.setUTCDate(expiryDate.getUTCDate() + plan.duration);
 
     const membership = this.membershipRepository.create({
       member,
@@ -168,19 +282,72 @@ export class MemberService {
 
     const savedMembership = await this.membershipRepository.save(membership);
 
-    // Update member's general status if they were cancelled/expired
-    if (
-      member.membershipStatus !== MembershipStatus.ACTIVE &&
-      status === MembershipStatus.ACTIVE
-    ) {
-      member.membershipStatus = MembershipStatus.ACTIVE;
-      await this.memberRepository.save(member);
-    }
+    await this.syncMembershipStatuses(memberId);
 
     return savedMembership;
   }
 
+  async changeMembershipAccess(
+    memberId: string,
+    action: MembershipAccessAction,
+  ): Promise<Member> {
+    await this.syncMembershipStatuses(memberId);
+    const member = await this.memberRepository.findOne({
+      where: { id: memberId },
+      relations: ['user', 'memberships', 'memberships.plan'],
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    if (action === MembershipAccessAction.CANCEL) {
+      const membershipsToCancel = member.memberships.filter((membership) =>
+        [MembershipStatus.ACTIVE, MembershipStatus.UPCOMING].includes(
+          membership.status,
+        ),
+      );
+      if (!membershipsToCancel.length) {
+        throw new BadRequestException(
+          'This member has no active or upcoming membership to cancel',
+        );
+      }
+
+      membershipsToCancel.forEach((membership) => {
+        membership.status = MembershipStatus.CANCELLED;
+      });
+      await this.membershipRepository.save(membershipsToCancel);
+    } else {
+      if (member.membershipStatus !== MembershipStatus.CANCELLED) {
+        throw new BadRequestException(
+          'Only a cancelled membership can be reactivated',
+        );
+      }
+      const today = this.getGymLocalDate();
+      const membershipsToReactivate = member.memberships.filter(
+        (membership) =>
+          membership.status === MembershipStatus.CANCELLED &&
+          this.getGymLocalDate(new Date(membership.expiryDate)) >= today,
+      );
+      if (!membershipsToReactivate.length) {
+        throw new BadRequestException(
+          'This membership has expired. Renew the plan instead of reactivating it',
+        );
+      }
+
+      membershipsToReactivate.forEach((membership) => {
+        const startDate = this.getGymLocalDate(new Date(membership.startDate));
+        membership.status =
+          startDate > today
+            ? MembershipStatus.UPCOMING
+            : MembershipStatus.ACTIVE;
+      });
+      await this.membershipRepository.save(membershipsToReactivate);
+    }
+
+    await this.syncMembershipStatuses(memberId);
+    return this.findOne(memberId);
+  }
+
   async findAllDashboard(queryDto: MemberQueryDto) {
+    await this.syncMembershipStatuses();
     const {
       search,
       status,

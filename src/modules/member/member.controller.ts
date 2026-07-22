@@ -13,6 +13,7 @@ import { MemberService } from './member.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { MemberQueryDto } from './dto/member-query.dto';
+import { ChangeMembershipAccessDto } from './dto/change-membership-access.dto';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -67,6 +68,16 @@ export class MemberController {
   @ApiOperation({ summary: 'Update member details' })
   update(@Param('id') id: string, @Body() updateMemberDto: UpdateMemberDto) {
     return this.memberService.update(id, updateMemberDto);
+  }
+
+  @Patch(':id/membership-access')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Cancel or reactivate a member membership' })
+  changeMembershipAccess(
+    @Param('id') id: string,
+    @Body() accessDto: ChangeMembershipAccessDto,
+  ) {
+    return this.memberService.changeMembershipAccess(id, accessDto.action);
   }
 
   @Delete(':id')

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Member } from '../member/entities/member.entity';
 import { Payment } from '../payment/entities/payment.entity';
 import { MembershipStatus, PaymentStatus } from '../../common/enums';
+import { MemberService } from '../member/member.service';
 
 @Injectable()
 export class DashboardService {
@@ -12,9 +13,11 @@ export class DashboardService {
     private readonly memberRepository: Repository<Member>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+    private readonly memberService: MemberService,
   ) {}
 
   async getDashboardStats(period = 'thisMonth', startDate?: string, endDate?: string) {
+    await this.memberService.syncMembershipStatuses();
     const range = this.getDateRange(period, startDate, endDate);
     const params = { start: range.start, end: range.end };
 

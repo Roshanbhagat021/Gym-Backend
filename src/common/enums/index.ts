@@ -7,7 +7,6 @@ export enum Role {
 export enum MembershipStatus {
   ACTIVE = 'ACTIVE',
   EXPIRED = 'EXPIRED',
-  FROZEN = 'FROZEN',
   CANCELLED = 'CANCELLED',
   UPCOMING = 'UPCOMING',
 }
